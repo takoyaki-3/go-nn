@@ -6,6 +6,7 @@ import (
 	"math/rand"
 
 	"gonum.org/v1/gonum/mat"
+	json "github.com/takoyaki-3/go-json"
 )
 
 type NeuralNetwork struct {
@@ -110,3 +111,62 @@ func (nn *NeuralNetwork)Query(input *mat.Dense)*mat.Dense{
 	return &D
 }
 
+type Data struct {
+	InputNodes int `json:"input_nodes"`
+	HiddenNodes int `json:"hidden_nodes"`
+	OutputNodes int `json:"output_nodes"`
+	Wi [][]float64 `json:"wi"`
+	Wo [][]float64 `json:"wo"`
+	Score float64 `json:"score"`
+}
+
+func (nn *NeuralNetwork)Save(path string)error{
+	wi := make([][]float64,nn.hiddenNodes)
+	for i:=0;i<nn.hiddenNodes;i++{
+		for j:=0;j<nn.inputNodes;j++{
+			x := nn.wi.At(i,j)
+			wi[i] = append(wi[i], x)
+		}
+	}
+	wo := make([][]float64,nn.outputNodes)
+	for i:=0;i<nn.outputNodes;i++{
+		for j:=0;j<nn.hiddenNodes;j++{
+			x := nn.wo.At(i,j)
+			wo[i] = append(wi[i], x)
+		}
+	}
+	data := Data{
+		InputNodes: nn.inputNodes,
+		HiddenNodes: nn.hiddenNodes,
+		OutputNodes: nn.outputNodes,
+		Wi: wi,
+		Wo: wo,
+		Score: nn.Score,
+	}
+	return json.DumpToFile(&data,path)
+}
+
+func (nn *NeuralNetwork)Load(path string)error{
+	var data Data
+	if err:=json.LoadFromPath(path,&data);err!=nil{
+		return err
+	}
+	nn.hiddenNodes = data.HiddenNodes
+	nn.inputNodes = data.InputNodes
+	nn.outputNodes = data.OutputNodes
+
+	nn.wi = mat.NewDense(nn.hiddenNodes,nn.inputNodes,nil)
+	nn.wo = mat.NewDense(nn.outputNodes,nn.hiddenNodes,nil)
+
+	for i:=0;i<nn.hiddenNodes;i++{
+		for j:=0;j<nn.inputNodes;j++{
+			nn.wi.Set(i,j,data.Wi[i][j])
+		}
+	}
+	for i:=0;i<nn.outputNodes;i++{
+		for j:=0;j<nn.hiddenNodes;j++{
+			nn.wo.Set(i,j,data.Wo[i][j])
+		}
+	}
+	return nil
+}
