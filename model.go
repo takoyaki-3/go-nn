@@ -1,9 +1,11 @@
 package gonn
 
 import (
-	"gonum.org/v1/gonum/mat"
-	"math/rand"
+	// "fmt"
 	"math"
+	"math/rand"
+
+	"gonum.org/v1/gonum/mat"
 )
 
 type NeuralNetwork struct {
@@ -46,6 +48,8 @@ func Parent2Child(p []*NeuralNetwork,mutation float64)*NeuralNetwork{
 
 	nn.wi = mat.NewDense(nn.hiddenNodes,nn.inputNodes,nil)
 	nn.wo = mat.NewDense(nn.outputNodes,nn.hiddenNodes,nil)
+	// fmt.Println(nn.wo.ColView(0).Len())
+	// fmt.Println(nn.wo.RowView(0).Len())
 
 	ps := []int{}
 	ps = append(ps, rand.Intn(len(p)))
@@ -53,6 +57,9 @@ func Parent2Child(p []*NeuralNetwork,mutation float64)*NeuralNetwork{
 
 	for i:=0;i<nn.hiddenNodes;i++{
 		for j:=0;j<nn.inputNodes;j++{
+			// fmt.Println(i,j,"inputNodes")
+			// fmt.Println(nn.wi.ColView(0).Len())
+			// fmt.Println(nn.wi.RowView(0).Len())
 			if float64(rand.Intn(RAND)) / float64(RAND) > mutation {
 				t := ps[rand.Intn(len(ps))]
 				x := p[t].wi.At(i,j)
@@ -65,13 +72,16 @@ func Parent2Child(p []*NeuralNetwork,mutation float64)*NeuralNetwork{
 	}
 	for i:=0;i<nn.outputNodes;i++{
 		for j:=0;j<nn.hiddenNodes;j++{
+			// fmt.Println(i,j,"outputNodes")
+			// fmt.Println(nn.wo.ColView(0).Len())
+			// fmt.Println(nn.wo.RowView(0).Len())
 			if float64(rand.Intn(RAND)) / float64(RAND) > mutation {
 				t := ps[rand.Intn(len(ps))]
 				x := p[t].wo.At(i,j)
 				nn.wo.Set(i,j,x)
 			} else {
 				x := float64(rand.Intn(RAND)) / float64(RAND) - 0.5
-				nn.wi.Set(i,j,x)
+				nn.wo.Set(i,j,x)
 			}
 		}
 	}
