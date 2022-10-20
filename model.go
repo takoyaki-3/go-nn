@@ -5,8 +5,8 @@ import (
 	"math"
 	"math/rand"
 
-	"gonum.org/v1/gonum/mat"
 	json "github.com/takoyaki-3/go-json"
+	"gonum.org/v1/gonum/mat"
 )
 
 type NeuralNetwork struct {
@@ -81,7 +81,7 @@ func Parent2Child(p []*NeuralNetwork,mutation float64)*NeuralNetwork{
 				x := p[t].wo.At(i,j)
 				nn.wo.Set(i,j,x)
 			} else {
-				x := float64(rand.Intn(RAND)) / float64(RAND) - 0.5
+				x := float64(rand.Intn(RAND)) / float64(RAND+1) - 1.0
 				nn.wo.Set(i,j,x)
 			}
 		}
@@ -132,7 +132,7 @@ func (nn *NeuralNetwork)Save(path string)error{
 	for i:=0;i<nn.outputNodes;i++{
 		for j:=0;j<nn.hiddenNodes;j++{
 			x := nn.wo.At(i,j)
-			wo[i] = append(wi[i], x)
+			wo[i] = append(wo[i], x)
 		}
 	}
 	data := Data{
