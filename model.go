@@ -10,12 +10,12 @@ import (
 )
 
 type NeuralNetwork struct {
-	inputNodes int
-	hiddenNodes int
-	outputNodes int
-	wi *mat.Dense
-	wo *mat.Dense
-	Score float64
+	inputNodes int	// 入力ノード数
+	hiddenNodes int	// 隠れ層ノード数
+	outputNodes int	// 出力ノード数
+	wi *mat.Dense		// 入力層と隠れ層間の重み
+	wo *mat.Dense		// 隠れ層と出力層間の重み
+	Score float64		// 得点
 }
 
 const RAND = 10000
@@ -29,6 +29,7 @@ func NewRandom05to05Dense(r,c int) *mat.Dense {
 	return mat.NewDense(r, c, data)
 }
 
+// 乱数を初期値とした新規ニューラルネットワーク作成
 func NewNeuralNetwork(inputNodes, outputNodes, hiddenNodes int)*NeuralNetwork{
 	nn := new(NeuralNetwork)
 	nn.inputNodes = inputNodes
@@ -41,6 +42,7 @@ func NewNeuralNetwork(inputNodes, outputNodes, hiddenNodes int)*NeuralNetwork{
 	return nn
 }
 
+// 親ニューラルネットワークから子ニューラルネットワークを作成
 func Parent2Child(p []*NeuralNetwork,mutation float64)*NeuralNetwork{
 	nn := new(NeuralNetwork)
 	nn.inputNodes = p[0].inputNodes
@@ -90,6 +92,7 @@ func Parent2Child(p []*NeuralNetwork,mutation float64)*NeuralNetwork{
 	return nn
 }
 
+// ニューラルネットワークを用いて入力ベクトルから出力ベクトルを得る
 func (nn *NeuralNetwork)Query(input *mat.Dense)*mat.Dense{
 	A := mat.NewDense(nn.hiddenNodes,1,nil)
 	A.Product(nn.wi,input)
@@ -101,7 +104,6 @@ func (nn *NeuralNetwork)Query(input *mat.Dense)*mat.Dense{
 	var B mat.Dense
 	B.Apply(sigmoid, A)
 
-
 	C := mat.NewDense(nn.outputNodes,1,nil)
 	C.Product(nn.wo,&B)
 
@@ -111,6 +113,7 @@ func (nn *NeuralNetwork)Query(input *mat.Dense)*mat.Dense{
 	return &D
 }
 
+// ニューラルネットワークの一時保存用JSONデータ形式
 type Data struct {
 	InputNodes int `json:"input_nodes"`
 	HiddenNodes int `json:"hidden_nodes"`
@@ -120,6 +123,7 @@ type Data struct {
 	Score float64 `json:"score"`
 }
 
+// ニューラルネットワークをJSON形式で保存
 func (nn *NeuralNetwork)Save(path string)error{
 	wi := make([][]float64,nn.hiddenNodes)
 	for i:=0;i<nn.hiddenNodes;i++{
@@ -146,6 +150,7 @@ func (nn *NeuralNetwork)Save(path string)error{
 	return json.DumpToFile(&data,path)
 }
 
+// ニューラルネットワークのJSONファイルを読み込み
 func (nn *NeuralNetwork)Load(path string)error{
 	var data Data
 	if err:=json.LoadFromPath(path,&data);err!=nil{
