@@ -40,6 +40,8 @@ github.com/takoyaki-3/go-json v0.0.2 h1:IRG20KZUFt0ZnYikI6ob+/8cSjTA41rTaaA5cVAK
 github.com/takoyaki-3/go-json v0.0.2/go.mod h1:39fxS11XWIvygjbgeXg4bpyvAxLZ2lr1Cv+9DbbQ9Ew=
 github.com/takoyaki-3/goc v0.0.0-20210211015351-5f5226ea8e8d h1:lBtXcvJmfBgvTQ/npniXug3cPyDeb1dm9HM6sCLTU6o=
 github.com/takoyaki-3/goc v0.0.0-20210211015351-5f5226ea8e8d/go.mod h1:1G2vCfYcBkWXFVcgXf88O1JNcldnoBg6hX6lGhoNLAc=
+github.com/takoyaki-3/goc v0.0.1 h1:A8+ffyd/BGRz0vqfO9l4r0XOY4Vn7X0QBj9zXhKFink=
+github.com/takoyaki-3/goc v0.0.1/go.mod h1:1G2vCfYcBkWXFVcgXf88O1JNcldnoBg6hX6lGhoNLAc=
 github.com/yuin/goldmark v1.2.1/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.4.1/go.mod h1:mwnBkeHKe2W/ZEtQ+71ViKU8L12m81fl3OWwC1Zlc8k=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=

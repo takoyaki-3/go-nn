@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"sort"
 
 	json "github.com/takoyaki-3/go-json"
 	"gonum.org/v1/gonum/mat"
@@ -34,6 +35,8 @@ const SinglePointCrossover = 1
 const TwoPointCrosser = 2
 const UniformCrosser = 3
 
+const Roulette = 10
+
 // 乱数を初期値とした新規ニューラルネットワーク作成
 func NewNeuralNetwork(inputNodes, outputNodes, hiddenNodes int) *NeuralNetwork {
 	nn := new(NeuralNetwork)
@@ -45,6 +48,14 @@ func NewNeuralNetwork(inputNodes, outputNodes, hiddenNodes int) *NeuralNetwork {
 	nn.wo = NewRandom05to05Dense(outputNodes, hiddenNodes)
 
 	return nn
+}
+
+func MakeNewNNs(num, inputNodes, outputNodes, hiddenNodes int)[]*NeuralNetwork{
+	nns := []*NeuralNetwork{}
+	for i:=0;i<num;i++{
+		nns = append(nns, NewNeuralNetwork(inputNodes,outputNodes,hiddenNodes))
+	}
+	return nns
 }
 
 // 親ニューラルネットワークから子ニューラルネットワークを作成
@@ -203,7 +214,12 @@ func (nn *NeuralNetwork) Load(path string) error {
 }
 
 // 親世代が格納された配列から子世代を作り出す
-func Parents2Children_(parents []*NeuralNetwork,numChildren int, mutation float64)[]*NeuralNetwork{
+func Parents2Children(parents []*NeuralNetwork,numParent ,numChildren int, mutation float64,how int)[]*NeuralNetwork{
+
+	sort.Slice(parents,func(i, j int) bool {
+		return parents[i].Score > parents[j].Score
+	})
+
 	children := []*NeuralNetwork{}
 
 	for i:=0;i<numChildren;i++{

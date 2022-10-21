@@ -2,15 +2,11 @@ package main
 
 import (
 	"fmt"
-	// "math/rand"
 	"sort"
 	"strconv"
-	"sync"
 
 	gonn "github.com/takoyaki-3/go-nn"
 	"github.com/takoyaki-3/goc"
-
-	"gonum.org/v1/gonum/mat"
 )
 
 func loadFile(fname string, inputNodeSize, outputNodeSize int) ([]*[]float64, []*[]float64) {
@@ -36,22 +32,6 @@ func loadFile(fname string, inputNodeSize, outputNodeSize int) ([]*[]float64, []
 	return inputs, outputs
 }
 
-func matPrint(X mat.Matrix) {
-	fa := mat.Formatted(X, mat.Prefix(""), mat.Squeeze())
-	fmt.Printf("%v\n", fa)
-}
-
-func NewDense(r, c int, x float64) *mat.Dense {
-	data := []float64{}
-	for i := 0; i < r*c; i++ {
-		data = append(data, x)
-	}
-
-	return mat.NewDense(r, c, data)
-}
-
-const NumParent = 20
-
 const NumCore = 8
 
 func main() {
@@ -59,11 +39,7 @@ func main() {
 
 	inputs, outputs := loadFile("./sample_data/mnist_train_small.csv", 784, 10)
 
-	nns := []*gonn.NeuralNetwork{}
-	for i := 0; i < NumParent; i++ {
-		nn := gonn.NewNeuralNetwork(784, 10, 200)
-		nns = append(nns, nn)
-	}
+	nns := gonn.MakeNewNNs(100,784,10,200)
 
 	// 現状出力
 	fmt.Println("-----------------")
@@ -72,52 +48,16 @@ func main() {
 	}
 	fmt.Println()
 
-	for e := 0; e < 50000; e += 100 {
+	for e := 0; e < 50000; e += 1 {
 
-		in := []*[]float64{}
-		out := []*[]float64{}
-
-		p := nns[:NumParent]
-
-		NumChild := 200
-		er := 0.001
-		// if e%10 == 9 {
-		// 	NumChild = 500
-		// 	er = 0.02
-		// }
-
-		nnsSub := make([][]*gonn.NeuralNetwork, NumCore)
-
-		n := e
-		if n > len(inputs) {
-			n = len(inputs)
-		}
-		in = inputs[:n]
-		out = outputs[:n]
-
-		wg := sync.WaitGroup{}
-		wg.Add(NumCore)
-		for rank := 0; rank < NumCore; rank++ {
-			go func(rank int) {
-				defer wg.Done()
-				for i := rank; i < NumChild; i += NumCore {
-					nn := gonn.Parent2Child(p, er)
-					nn.Score = Try(nn, in, out)
-					nnsSub[rank] = append(nnsSub[rank], nn)
-				}
-			}(rank)
-		}
-		wg.Wait()
-		nns = []*gonn.NeuralNetwork{}
-		for rank := 0; rank < NumCore; rank++ {
-			nns = append(nns, nnsSub[rank]...)
+		if e>0{
+			nns = gonn.Parents2Children(nns,10,100,0.001,0)
 		}
 
-		for i, _ := range p[:2] {
-			p[i].Score = Try(p[i], in, out)
-		}
-		nns = append(nns, p[:2]...)
-		sort.Slice(nns, func(i, j int) bool {
+		goc.Parallel(NumCore,len(nns),func(i1, i2 int) {
+			nns[i1].Score = Try(nns[i1],inputs[:1000],outputs[:1000])
+		})
+		sort.Slice(nns,func(i, j int) bool {
 			return nns[i].Score > nns[j].Score
 		})
 
@@ -138,14 +78,14 @@ func main() {
 func Try(nn *gonn.NeuralNetwork, inputs, outputs []*[]float64) float64 {
 	// 評価部分
 	var ok, ng int
-	for ii := 0; ii < len(inputs); ii++ {
+	for i := 0; i < len(inputs); i++ {
 		ans := 0
 		for j := 1; j < 10; j++ {
-			if (*outputs[ii])[j] > (*outputs[ii])[ans] {
+			if (*outputs[i])[j] > (*outputs[i])[ans] {
 				ans = j
 			}
 		}
-		output := nn.Query(inputs[ii])
+		output := nn.Query(inputs[i])
 		most := 0
 		for j := 1; j < 10; j++ {
 			if (*output)[j] > (*output)[most] {
