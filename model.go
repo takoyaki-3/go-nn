@@ -2,6 +2,7 @@ package gonn
 
 import (
 	// "fmt"
+	"fmt"
 	"math"
 	"math/rand"
 
@@ -28,6 +29,10 @@ func NewRandom05to05Dense(r, c int) *mat.Dense {
 
 	return mat.NewDense(r, c, data)
 }
+
+const SinglePointCrossover = 1
+const TwoPointCrosser = 2
+const UniformCrosser = 3
 
 // 乱数を初期値とした新規ニューラルネットワーク作成
 func NewNeuralNetwork(inputNodes, outputNodes, hiddenNodes int) *NeuralNetwork {
@@ -123,8 +128,7 @@ type Data struct {
 	Score       float64     `json:"score"`
 }
 
-// ニューラルネットワークをJSON形式で保存
-func (nn *NeuralNetwork) Save(path string) error {
+func NeuralNetwork2Data(nn *NeuralNetwork)*Data{
 	wi := make([][]float64, nn.hiddenNodes)
 	for i := 0; i < nn.hiddenNodes; i++ {
 		for j := 0; j < nn.inputNodes; j++ {
@@ -139,7 +143,8 @@ func (nn *NeuralNetwork) Save(path string) error {
 			wo[i] = append(wo[i], x)
 		}
 	}
-	data := Data{
+	data := new(Data)
+	*data = Data{
 		InputNodes:  nn.inputNodes,
 		HiddenNodes: nn.hiddenNodes,
 		OutputNodes: nn.outputNodes,
@@ -147,15 +152,10 @@ func (nn *NeuralNetwork) Save(path string) error {
 		Wo:          wo,
 		Score:       nn.Score,
 	}
-	return json.DumpToFile(&data, path)
+	return data
 }
 
-// ニューラルネットワークのJSONファイルを読み込み
-func (nn *NeuralNetwork) Load(path string) error {
-	var data Data
-	if err := json.LoadFromPath(path, &data); err != nil {
-		return err
-	}
+func Data2NeuralNetwork(data *Data,nn *NeuralNetwork)error{
 	nn.hiddenNodes = data.HiddenNodes
 	nn.inputNodes = data.InputNodes
 	nn.outputNodes = data.OutputNodes
@@ -174,4 +174,49 @@ func (nn *NeuralNetwork) Load(path string) error {
 		}
 	}
 	return nil
+}
+
+// ニューラルネットワークをJSON形式で保存
+func (nn *NeuralNetwork) Save(path string) error {
+	return json.DumpToFile(NeuralNetwork2Data(nn), path)
+}
+
+// ニューラルネットワークのJSONファイルを読み込み
+func (nn *NeuralNetwork) Load(path string) error {
+	var data Data
+	if err := json.LoadFromPath(path, &data); err != nil {
+		return err
+	}
+	return Data2NeuralNetwork(&data, nn)
+}
+
+// 親世代が格納された配列から子世代を作り出す
+func Parents2Children_(parents []*NeuralNetwork,numChildren int, mutation float64)[]*NeuralNetwork{
+	children := []*NeuralNetwork{}
+
+	for i:=0;i<numChildren;i++{
+		children = append(children, Parent2Child(parents,mutation))
+	}
+
+	return children
+}
+
+// 遺伝子の比較を行う
+func CompNN(nn1 ,nn2 *NeuralNetwork)float64{
+	d1 := NeuralNetwork2Data(nn1)
+	d2 := NeuralNetwork2Data(nn2)
+
+	n:=0
+	c:=0
+	for i,w:=range d1.Wi{
+		for j,_:=range w{
+			if d1.Wi[i][j] == d2.Wi[i][j]{
+				n++
+			} else {
+				fmt.Println(c,d1.Wi[i][j],d2.Wi[i][j])
+			}
+			c++
+		}
+	}
+	return float64(n)/float64(c)
 }
