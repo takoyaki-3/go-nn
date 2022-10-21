@@ -123,6 +123,10 @@ func (nn *NeuralNetwork) Query(inputVec *[]float64) *[]float64 {
 
 	output := make([]float64,D.RawMatrix().Rows)
 
+	for i:=0;i<D.RawMatrix().Rows;i++{
+		output[i] = D.ColView(0).AtVec(i)
+	}
+
 	return &output
 }
 
