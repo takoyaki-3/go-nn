@@ -13,24 +13,24 @@ import (
 	"gonum.org/v1/gonum/mat"
 )
 
-func loadFile(fname string, inputNodeSize, outputNodeSize int) ([]*mat.Dense, []*mat.Dense) {
-	inputs := make([]*mat.Dense, 0)
-	outputs := make([]*mat.Dense, 0)
+func loadFile(fname string, inputNodeSize, outputNodeSize int) ([]*[]float64, []*[]float64) {
+	inputs := []*[]float64{}
+	outputs := []*[]float64{}
 
 	df := goc.Read2DStr(fname)
 
 	for _, line := range df {
-		input := mat.NewDense(len(line)-1, 1, nil)
-		output := mat.NewDense(10, 1, nil)
+		input := make([]float64,len(line)-1)
+		output := make([]float64,10)
 		x, _ := strconv.Atoi(line[0])
-		output.Set(x, 0, 0.999)
+		output[x] = 0.999
 
 		for i, n := range line[1:] {
 			x, _ := strconv.Atoi(n)
-			input.Set(i, 0, float64(x)/255.0+0.001)
+			input[i] = float64(x)/255.0+0.001
 		}
-		inputs = append(inputs, input)
-		outputs = append(outputs, output)
+		inputs = append(inputs, &input)
+		outputs = append(outputs, &output)
 	}
 
 	return inputs, outputs
@@ -74,17 +74,17 @@ func main() {
 
 	for e := 0; e < 50000; e += 100 {
 
-		in := []*mat.Dense{}
-		out := []*mat.Dense{}
+		in := []*[]float64{}
+		out := []*[]float64{}
 
 		p := nns[:NumParent]
 
 		NumChild := 200
-		er := 0.01
-		if e%10 == 9 {
-			NumChild = 500
-			er = 0.02
-		}
+		er := 0.001
+		// if e%10 == 9 {
+		// 	NumChild = 500
+		// 	er = 0.02
+		// }
 
 		nnsSub := make([][]*gonn.NeuralNetwork, NumCore)
 
@@ -135,21 +135,20 @@ func main() {
 	}
 }
 
-func Try(nn *gonn.NeuralNetwork, inputs, outputs []*mat.Dense) float64 {
+func Try(nn *gonn.NeuralNetwork, inputs, outputs []*[]float64) float64 {
 	// 評価部分
 	var ok, ng int
 	for ii := 0; ii < len(inputs); ii++ {
-		i := ii
 		ans := 0
 		for j := 1; j < 10; j++ {
-			if outputs[i].At(j, 0) > outputs[i].At(ans, 0) {
+			if (*outputs[ii])[j] > (*outputs[ii])[ans] {
 				ans = j
 			}
 		}
-		output := nn.Query(inputs[i])
+		output := nn.Query(inputs[ii])
 		most := 0
 		for j := 1; j < 10; j++ {
-			if output.At(j, 0) > output.At(most, 0) {
+			if (*output)[j] > (*output)[most] {
 				most = j
 			}
 		}
