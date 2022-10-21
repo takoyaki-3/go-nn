@@ -48,11 +48,14 @@ func main() {
 	}
 	fmt.Println()
 
+	elite := nns[0]
+
 	for e := 0; e < 50000; e += 1 {
 
 		if e>0{
-			nns = gonn.Parents2Children(nns,10,100,0.001,0)
+			nns = gonn.Parents2Children(nns,10,200,0.005,0)
 		}
+		nns[0] = elite
 
 		goc.Parallel(NumCore,len(nns),func(i1, i2 int) {
 			nns[i1].Score = Try(nns[i1],inputs[:1000],outputs[:1000])
@@ -60,6 +63,7 @@ func main() {
 		sort.Slice(nns,func(i, j int) bool {
 			return nns[i].Score > nns[j].Score
 		})
+		elite = nns[0]
 
 		// 現状出力
 		fmt.Println("-----------------")
