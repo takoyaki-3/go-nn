@@ -98,7 +98,13 @@ func Parent2Child(p []*NeuralNetwork, mutation float64) *NeuralNetwork {
 }
 
 // ニューラルネットワークを用いて入力ベクトルから出力ベクトルを得る
-func (nn *NeuralNetwork) Query(input *mat.Dense) *mat.Dense {
+func (nn *NeuralNetwork) Query(inputVec *[]float64) *[]float64 {
+
+	input := mat.NewDense(len(*inputVec),1,nil)
+	for i,p:=range *inputVec{
+		input.Set(i,0,p)
+	}
+
 	A := mat.NewDense(nn.hiddenNodes, 1, nil)
 	A.Product(nn.wi, input)
 
@@ -115,7 +121,9 @@ func (nn *NeuralNetwork) Query(input *mat.Dense) *mat.Dense {
 	var D mat.Dense
 	D.Apply(sigmoid, C)
 
-	return &D
+	output := make([]float64,D.RawMatrix().Rows)
+
+	return &output
 }
 
 // ニューラルネットワークの一時保存用JSONデータ形式
