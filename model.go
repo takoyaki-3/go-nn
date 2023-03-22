@@ -108,6 +108,14 @@ func NewNeuralNetwork(inputSize, hiddenSize, outputSize int, activationFunction 
 	return nn
 }
 
+func (nn *NeuralNetwork)PrintSize(){
+	fmt.Println("---------------------")
+	fmt.Println("input size:",nn.inputSize)
+	fmt.Println("hidden size:",nn.hiddenSize)
+	fmt.Println("output size:",nn.outputSize)
+	fmt.Println("---------------------")
+}
+
 func (nn *NeuralNetwork) Forward(input []float64) []float64 {
 	hidden := make([]float64, nn.hiddenSize)
 	output := make([]float64, nn.outputSize)
