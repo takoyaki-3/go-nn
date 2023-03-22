@@ -1,9 +1,12 @@
 package gonn
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"math"
 	"math/rand"
+	"os"
 	"time"
 )
 
@@ -19,6 +22,16 @@ type NeuralNetwork struct {
 	activationFunction1Derivative func(float64)float64
 	activationFunction2 func(float64)float64
 	activationFunction2Derivative func(float64)float64
+}
+
+type Weights struct {
+	InputSize  int       `json:"inputSize"`
+	HiddenSize int       `json:"hiddenSize"`
+	OutputSize int       `json:"outputSize"`
+	Weights1   [][]float64 `json:"wi"`
+	Weights2   [][]float64 `json:"wo"`
+	Bias1      []float64   `json:"biasI"`
+	Bias2      []float64   `json:"biasO"`
 }
 
 func sigmoid(x float64) float64 {
@@ -194,4 +207,54 @@ func (nn *NeuralNetwork) TrainNeuralNetwork(inputs [][]float64, outputs [][]floa
 		accuracy := float64(correct) / float64(len(inputs)) * 100.0
 		fmt.Printf("epoch: %d, accuracy: %f\n", epoch, accuracy)
 	}
+}
+
+func (nn *NeuralNetwork) SaveWeights(filepath string) error {
+	weights := Weights{
+		InputSize:  nn.inputSize,
+		HiddenSize: nn.hiddenSize,
+		OutputSize: nn.outputSize,
+		Weights1:   nn.weights1,
+		Weights2:   nn.weights2,
+		Bias1:      nn.bias1,
+		Bias2:      nn.bias2,
+	}
+
+	file, err := os.Create(filepath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	encoder := json.NewEncoder(file)
+	err = encoder.Encode(weights)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (nn *NeuralNetwork) LoadWeights(filepath string) error {
+	weights := Weights{}
+
+	data, err := ioutil.ReadFile(filepath)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(data, &weights)
+	if err != nil {
+		return err
+	}
+
+	nn.inputSize = weights.InputSize
+	nn.hiddenSize = weights.HiddenSize
+	nn.outputSize = weights.OutputSize
+	nn.weights1 = weights.Weights1
+	nn.weights2 = weights.Weights2
+	nn.bias1 = weights.Bias1
+	nn.bias2 = weights.Bias2
+
+	return nil
 }

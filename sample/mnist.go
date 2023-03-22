@@ -76,6 +76,9 @@ func main() {
 	nn := NewNeuralNetwork(len(inputs[0]), 64, len(labels[0]), "relu-sigmoid")
 	nn.TrainNeuralNetwork(inputs, outputs, 0.01, 50)
 
+	// Save weights
+	nn.SaveWeights("weights.json")
+
 	// Load test data
 	testInputs, err := ReadCSVFile("data/mnist_test.csv")
 	if err != nil {
