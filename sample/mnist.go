@@ -73,7 +73,7 @@ func main() {
 	}
 
 	// Train neural network
-	nn := NewNeuralNetwork(len(inputs[0]), 64, len(labels[0]))
+	nn := NewNeuralNetwork(len(inputs[0]), 64, len(labels[0]), "relu-sigmoid")
 	nn.TrainNeuralNetwork(inputs, outputs, 0.01, 50)
 
 	// Load test data

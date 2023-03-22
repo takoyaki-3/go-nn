@@ -15,6 +15,10 @@ type NeuralNetwork struct {
 	weights2   [][]float64
 	bias1      []float64
 	bias2      []float64
+	activationFunction1 func(float64)float64
+	activationFunction1Derivative func(float64)float64
+	activationFunction2 func(float64)float64
+	activationFunction2Derivative func(float64)float64
 }
 
 func sigmoid(x float64) float64 {
@@ -41,7 +45,7 @@ func reluDerivative(x float64) float64 {
 	}
 }
 
-func NewNeuralNetwork(inputSize, hiddenSize, outputSize int) *NeuralNetwork {
+func NewNeuralNetwork(inputSize, hiddenSize, outputSize int, activationFunction string) *NeuralNetwork {
 	nn := &NeuralNetwork{
 		inputSize:  inputSize,
 		hiddenSize: hiddenSize,
@@ -50,6 +54,18 @@ func NewNeuralNetwork(inputSize, hiddenSize, outputSize int) *NeuralNetwork {
 		weights2:   make([][]float64, hiddenSize),
 		bias1:      make([]float64, hiddenSize),
 		bias2:      make([]float64, outputSize),
+	}
+
+	if activationFunction == "relu-sigmoid" {
+		nn.activationFunction1 = relu
+		nn.activationFunction1Derivative = reluDerivative
+		nn.activationFunction2 = sigmoid
+		nn.activationFunction2Derivative = sigmoidDerivative
+	} else if activationFunction == "sigmoid-sigmoid" {
+		nn.activationFunction1 = sigmoid
+		nn.activationFunction1Derivative = sigmoidDerivative
+		nn.activationFunction2 = sigmoid
+		nn.activationFunction2Derivative = sigmoidDerivative
 	}
 
 	rand.Seed(time.Now().UnixNano())
@@ -87,14 +103,14 @@ func (nn *NeuralNetwork) Forward(input []float64) []float64 {
 		for j := range input {
 			hidden[i] += input[j] * nn.weights1[j][i]
 		}
-		hidden[i] = relu(hidden[i] + nn.bias1[i])
+		hidden[i] = nn.activationFunction1(hidden[i] + nn.bias1[i])
 	}
 
 	for i := range output {
 		for j := range hidden {
 			output[i] += hidden[j] * nn.weights2[j][i]
 		}
-		output[i] = sigmoid(output[i] + nn.bias2[i])
+		output[i] = nn.activationFunction2(output[i] + nn.bias2[i])
 	}
 
 	return output
@@ -114,14 +130,14 @@ func (nn *NeuralNetwork) TrainNeuralNetwork(inputs [][]float64, outputs [][]floa
 				for k := range input {
 					hidden[j] += input[k] * nn.weights1[k][j]
 				}
-				hidden[j] = relu(hidden[j] + nn.bias1[j])
+				hidden[j] = nn.activationFunction1(hidden[j] + nn.bias1[j])
 			}
 
 			for j := range outputLayer {
 				for k := range hidden {
 					outputLayer[j] += hidden[k] * nn.weights2[k][j]
 				}
-				outputLayer[j] = sigmoid(outputLayer[j] + nn.bias2[j])
+				outputLayer[j] = nn.activationFunction2(outputLayer[j] + nn.bias2[j])
 			}
 
 			// 正解数をカウントする
@@ -143,7 +159,7 @@ func (nn *NeuralNetwork) TrainNeuralNetwork(inputs [][]float64, outputs [][]floa
 
 			outputLayerDelta := make([]float64, nn.outputSize)
 			for j := range outputLayerDelta {
-				outputLayerDelta[j] = outputLayerError[j] * sigmoidDerivative(outputLayer[j])
+				outputLayerDelta[j] = outputLayerError[j] * nn.activationFunction2Derivative(outputLayer[j])
 			}
 
 			hiddenError := make([]float64, nn.hiddenSize)
@@ -155,7 +171,7 @@ func (nn *NeuralNetwork) TrainNeuralNetwork(inputs [][]float64, outputs [][]floa
 
 			hiddenDelta := make([]float64, nn.hiddenSize)
 			for j := range hiddenDelta {
-				hiddenDelta[j] = hiddenError[j] * reluDerivative(hidden[j])
+				hiddenDelta[j] = hiddenError[j] * nn.activationFunction1Derivative(hidden[j])
 			}
 
 			// Update weights and biases
