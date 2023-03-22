@@ -113,6 +113,8 @@ func (nn *NeuralNetwork)PrintSize(){
 	fmt.Println("input size:",nn.inputSize)
 	fmt.Println("hidden size:",nn.hiddenSize)
 	fmt.Println("output size:",nn.outputSize)
+	fmt.Println("nn.bias1 len:",len(nn.bias1))
+	fmt.Println("nn.bias2 len:",len(nn.bias2))
 	fmt.Println("---------------------")
 }
 
