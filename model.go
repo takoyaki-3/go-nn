@@ -264,5 +264,12 @@ func (nn *NeuralNetwork) LoadWeights(filepath string) error {
 	nn.bias1 = weights.Bias1
 	nn.bias2 = weights.Bias2
 
+	if len(nn.bias1) == 0 {
+		nn.bias1 = make([]float64, nn.hiddenSize)
+	}
+	if len(nn.bias2) == 0 {
+		nn.bias2 = make([]float64, nn.outputSize)
+	}
+
 	return nil
 }
