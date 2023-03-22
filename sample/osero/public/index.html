@@ -1,0 +1,78 @@
+<html>
+  <body>
+    <!-- タイトルを表示 -->
+    <h1>オセロ</h1>
+    <!-- 石の数を表示する要素を追加 -->
+    <p>黒の石: <span id="black-count">2</span></p>
+    <p>白の石: <span id="white-count">2</span></p>
+    <!-- canvas要素を追加 -->
+    <canvas id="canvas" width="512" height="512"></canvas>
+    <!-- osero.jsのスクリプトを読み込む -->
+    <script src="./osero.js"></script>
+    <!-- ビューポートの設定 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- スクリプト部分 -->
+    <script>
+
+// canvas要素を取得して、クリックイベントを追加
+const canvas = document.getElementById('canvas');
+canvas.addEventListener('click', onClick, false);
+// 初期状態の描画
+draw(canvas,gameStatus);
+
+// クリック時の処理
+function onClick(e) {
+  // canvas要素の左上からの位置を取得
+  var rect = e.target.getBoundingClientRect();
+  x = e.clientX - rect.left;
+  y = e.clientY - rect.top;
+  // x, y座標をグリッドサイズで整数化
+  x = Math.trunc(x/grid_size)
+  y = Math.trunc(y/grid_size)
+  // 座標を出力
+  console.log(x,y)
+
+  // 送信するクエリを作成
+  const query = {
+    board:gameStatus.board,
+    x,
+    y,
+    player:1
+  };
+
+  // URLとメソッドを設定
+  const url = '/put';
+  const method = "POST";
+  // ボディを文字列化
+  const body = JSON.stringify(query);
+  // ボディを出力
+  console.log(body)
+  // ヘッダーは空
+  const headers = {
+  };
+  // メソッド、ヘッダー、ボディを出力
+  console.log({method,headers,body})
+  // fetchを実行して、結果を処理
+  fetch(url,{method,headers,body})
+  .then(function (data) {
+    // JSON形式で取得
+    return data.json();
+  })
+  .then(function (json) {
+    // 結果を出力
+    console.log(json)
+    // 取得したステータスがtrueの場合
+    if(json.status=="true"){
+      // 盤面の状態を更新
+      gameStatus.board = json.board;
+      // 更新後の状態を描画
+      draw(canvas,gameStatus);
+      // CPUの処理を実行
+      cpu(gameStatus);
+    }
+  });
+}
+
+    </script>
+  </body>
+</html>
