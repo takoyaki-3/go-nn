@@ -1,250 +1,181 @@
 package gonn
 
 import (
-	// "fmt"
 	"fmt"
 	"math"
 	"math/rand"
-	"sort"
-
-	json "github.com/takoyaki-3/go-json"
-	"gonum.org/v1/gonum/mat"
+	"time"
 )
 
 type NeuralNetwork struct {
-	inputNodes  int        // 入力ノード数
-	hiddenNodes int        // 隠れ層ノード数
-	outputNodes int        // 出力ノード数
-	wi          *mat.Dense // 入力層と隠れ層間の重み
-	wo          *mat.Dense // 隠れ層と出力層間の重み
-	Score       float64    // 得点
+	inputSize  int
+	hiddenSize int
+	outputSize int
+	weights1   [][]float64
+	weights2   [][]float64
+	bias1      []float64
+	bias2      []float64
 }
 
-const RAND = 10000
+func sigmoid(x float64) float64 {
+	return 1.0 / (1.0 + math.Exp(-x))
+}
 
-func NewRandom05to05Dense(r, c int) *mat.Dense {
-	data := []float64{}
-	for i := 0; i < r*c; i++ {
-		data = append(data, float64(rand.Intn(RAND))/float64(RAND)-0.5)
+func sigmoidDerivative(x float64) float64 {
+	return sigmoid(x) * (1 - sigmoid(x))
+}
+
+func relu(x float64) float64 {
+	if x >= 0 {
+		return x
+	} else {
+		return 0
+	}
+}
+
+func reluDerivative(x float64) float64 {
+	if x >= 0 {
+		return 1
+	} else {
+		return 0
+	}
+}
+
+func NewNeuralNetwork(inputSize, hiddenSize, outputSize int) *NeuralNetwork {
+	nn := &NeuralNetwork{
+		inputSize:  inputSize,
+		hiddenSize: hiddenSize,
+		outputSize: outputSize,
+		weights1:   make([][]float64, inputSize),
+		weights2:   make([][]float64, hiddenSize),
+		bias1:      make([]float64, hiddenSize),
+		bias2:      make([]float64, outputSize),
 	}
 
-	return mat.NewDense(r, c, data)
-}
+	rand.Seed(time.Now().UnixNano())
 
-const SinglePointCrossover = 1
-const TwoPointCrosser = 2
-const UniformCrosser = 3
-
-const Roulette = 10
-
-// 乱数を初期値とした新規ニューラルネットワーク作成
-func NewNeuralNetwork(inputNodes, outputNodes, hiddenNodes int) *NeuralNetwork {
-	nn := new(NeuralNetwork)
-	nn.inputNodes = inputNodes
-	nn.hiddenNodes = hiddenNodes
-	nn.outputNodes = outputNodes
-
-	nn.wi = NewRandom05to05Dense(hiddenNodes, inputNodes)
-	nn.wo = NewRandom05to05Dense(outputNodes, hiddenNodes)
-
-	return nn
-}
-
-func MakeNewNNs(num, inputNodes, outputNodes, hiddenNodes int)[]*NeuralNetwork{
-	nns := []*NeuralNetwork{}
-	for i:=0;i<num;i++{
-		nns = append(nns, NewNeuralNetwork(inputNodes,outputNodes,hiddenNodes))
-	}
-	return nns
-}
-
-// 親ニューラルネットワークから子ニューラルネットワークを作成
-func Parent2Child(p []*NeuralNetwork, mutation float64) *NeuralNetwork {
-	nn := new(NeuralNetwork)
-	nn.inputNodes = p[0].inputNodes
-	nn.hiddenNodes = p[0].hiddenNodes
-	nn.outputNodes = p[0].outputNodes
-
-	nn.wi = mat.NewDense(nn.hiddenNodes, nn.inputNodes, nil)
-	nn.wo = mat.NewDense(nn.outputNodes, nn.hiddenNodes, nil)
-	// fmt.Println(nn.wo.ColView(0).Len())
-	// fmt.Println(nn.wo.RowView(0).Len())
-
-	ps := []int{}
-	ps = append(ps, rand.Intn(len(p)))
-	ps = append(ps, rand.Intn(len(p)))
-
-	for i := 0; i < nn.hiddenNodes; i++ {
-		for j := 0; j < nn.inputNodes; j++ {
-			// fmt.Println(i,j,"inputNodes")
-			// fmt.Println(nn.wi.ColView(0).Len())
-			// fmt.Println(nn.wi.RowView(0).Len())
-			if float64(rand.Intn(RAND))/float64(RAND) > mutation {
-				t := ps[rand.Intn(len(ps))]
-				x := p[t].wi.At(i, j)
-				nn.wi.Set(i, j, x)
-			} else {
-				x := float64(rand.Intn(RAND))/float64(RAND) - 0.5
-				nn.wi.Set(i, j, x)
-			}
+	for i := range nn.weights1 {
+		nn.weights1[i] = make([]float64, nn.hiddenSize)
+		for j := range nn.weights1[i] {
+			nn.weights1[i][j] = rand.Float64()
 		}
 	}
-	for i := 0; i < nn.outputNodes; i++ {
-		for j := 0; j < nn.hiddenNodes; j++ {
-			// fmt.Println(i,j,"outputNodes")
-			// fmt.Println(nn.wo.ColView(0).Len())
-			// fmt.Println(nn.wo.RowView(0).Len())
-			if float64(rand.Intn(RAND))/float64(RAND) > mutation {
-				t := ps[rand.Intn(len(ps))]
-				x := p[t].wo.At(i, j)
-				nn.wo.Set(i, j, x)
-			} else {
-				x := float64(rand.Intn(RAND))/float64(RAND+1) - 1.0
-				nn.wo.Set(i, j, x)
-			}
+
+	for i := range nn.weights2 {
+		nn.weights2[i] = make([]float64, nn.outputSize)
+		for j := range nn.weights2[i] {
+			nn.weights2[i][j] = rand.Float64()
 		}
+	}
+
+	for i := range nn.bias1 {
+		nn.bias1[i] = rand.Float64()
+	}
+
+	for i := range nn.bias2 {
+		nn.bias2[i] = rand.Float64()
 	}
 
 	return nn
 }
 
-// ニューラルネットワークを用いて入力ベクトルから出力ベクトルを得る
-func (nn *NeuralNetwork) Query(inputVec *[]float64) *[]float64 {
+func (nn *NeuralNetwork) Forward(input []float64) []float64 {
+	hidden := make([]float64, nn.hiddenSize)
+	output := make([]float64, nn.outputSize)
 
-	input := mat.NewDense(len(*inputVec),1,nil)
-	for i,p:=range *inputVec{
-		input.Set(i,0,p)
-	}
-
-	A := mat.NewDense(nn.hiddenNodes, 1, nil)
-	A.Product(nn.wi, input)
-
-	// 要素ごとに適用する関数
-	sigmoid := func(i, j int, v float64) float64 {
-		return 1 / (1 + math.Exp(-v))
-	}
-	var B mat.Dense
-	B.Apply(sigmoid, A)
-
-	C := mat.NewDense(nn.outputNodes, 1, nil)
-	C.Product(nn.wo, &B)
-
-	var D mat.Dense
-	D.Apply(sigmoid, C)
-
-	output := make([]float64,D.RawMatrix().Rows)
-
-	for i:=0;i<D.RawMatrix().Rows;i++{
-		output[i] = D.ColView(0).AtVec(i)
-	}
-
-	return &output
-}
-
-// ニューラルネットワークの一時保存用JSONデータ形式
-type Data struct {
-	InputNodes  int         `json:"input_nodes"`
-	HiddenNodes int         `json:"hidden_nodes"`
-	OutputNodes int         `json:"output_nodes"`
-	Wi          [][]float64 `json:"wi"`
-	Wo          [][]float64 `json:"wo"`
-	Score       float64     `json:"score"`
-}
-
-func NeuralNetwork2Data(nn *NeuralNetwork)*Data{
-	wi := make([][]float64, nn.hiddenNodes)
-	for i := 0; i < nn.hiddenNodes; i++ {
-		for j := 0; j < nn.inputNodes; j++ {
-			x := nn.wi.At(i, j)
-			wi[i] = append(wi[i], x)
+	for i := range hidden {
+		for j := range input {
+			hidden[i] += input[j] * nn.weights1[j][i]
 		}
+		hidden[i] = relu(hidden[i] + nn.bias1[i])
 	}
-	wo := make([][]float64, nn.outputNodes)
-	for i := 0; i < nn.outputNodes; i++ {
-		for j := 0; j < nn.hiddenNodes; j++ {
-			x := nn.wo.At(i, j)
-			wo[i] = append(wo[i], x)
+
+	for i := range output {
+		for j := range hidden {
+			output[i] += hidden[j] * nn.weights2[j][i]
 		}
+		output[i] = sigmoid(output[i] + nn.bias2[i])
 	}
-	data := new(Data)
-	*data = Data{
-		InputNodes:  nn.inputNodes,
-		HiddenNodes: nn.hiddenNodes,
-		OutputNodes: nn.outputNodes,
-		Wi:          wi,
-		Wo:          wo,
-		Score:       nn.Score,
-	}
-	return data
+
+	return output
 }
 
-func Data2NeuralNetwork(data *Data,nn *NeuralNetwork)error{
-	nn.hiddenNodes = data.HiddenNodes
-	nn.inputNodes = data.InputNodes
-	nn.outputNodes = data.OutputNodes
+func (nn *NeuralNetwork) TrainNeuralNetwork(inputs [][]float64, outputs [][]float64, learningRate float64, epochs int) {
+	for epoch := 0; epoch < epochs; epoch++ {
+		correct := 0 // 正解数をカウントするための変数
+		for i := range inputs {
+			input := inputs[i]
+			output := outputs[i]
+			hidden := make([]float64, nn.hiddenSize)
+			outputLayer := make([]float64, nn.outputSize)
 
-	nn.wi = mat.NewDense(nn.hiddenNodes, nn.inputNodes, nil)
-	nn.wo = mat.NewDense(nn.outputNodes, nn.hiddenNodes, nil)
-
-	for i := 0; i < nn.hiddenNodes; i++ {
-		for j := 0; j < nn.inputNodes; j++ {
-			nn.wi.Set(i, j, data.Wi[i][j])
-		}
-	}
-	for i := 0; i < nn.outputNodes; i++ {
-		for j := 0; j < nn.hiddenNodes; j++ {
-			nn.wo.Set(i, j, data.Wo[i][j])
-		}
-	}
-	return nil
-}
-
-// ニューラルネットワークをJSON形式で保存
-func (nn *NeuralNetwork) Save(path string) error {
-	return json.DumpToFile(NeuralNetwork2Data(nn), path)
-}
-
-// ニューラルネットワークのJSONファイルを読み込み
-func (nn *NeuralNetwork) Load(path string) error {
-	var data Data
-	if err := json.LoadFromPath(path, &data); err != nil {
-		return err
-	}
-	return Data2NeuralNetwork(&data, nn)
-}
-
-// 親世代が格納された配列から子世代を作り出す
-func Parents2Children(parents []*NeuralNetwork,numParent ,numChildren int, mutation float64,how int)[]*NeuralNetwork{
-
-	sort.Slice(parents,func(i, j int) bool {
-		return parents[i].Score > parents[j].Score
-	})
-
-	children := []*NeuralNetwork{}
-
-	for i:=0;i<numChildren;i++{
-		children = append(children, Parent2Child(parents,mutation))
-	}
-
-	return children
-}
-
-// 遺伝子の比較を行う
-func CompNN(nn1 ,nn2 *NeuralNetwork)float64{
-	d1 := NeuralNetwork2Data(nn1)
-	d2 := NeuralNetwork2Data(nn2)
-
-	n:=0
-	c:=0
-	for i,w:=range d1.Wi{
-		for j,_:=range w{
-			if d1.Wi[i][j] == d2.Wi[i][j]{
-				n++
-			} else {
-				fmt.Println(c,d1.Wi[i][j],d2.Wi[i][j])
+			// Forward propagation
+			for j := range hidden {
+				for k := range input {
+					hidden[j] += input[k] * nn.weights1[k][j]
+				}
+				hidden[j] = relu(hidden[j] + nn.bias1[j])
 			}
-			c++
+
+			for j := range outputLayer {
+				for k := range hidden {
+					outputLayer[j] += hidden[k] * nn.weights2[k][j]
+				}
+				outputLayer[j] = sigmoid(outputLayer[j] + nn.bias2[j])
+			}
+
+			// 正解数をカウントする
+			prediction := 0
+			for j, val := range outputLayer {
+				if val > outputLayer[prediction] {
+					prediction = j
+				}
+			}
+			if output[prediction] == 1 {
+				correct++
+			}
+
+			// Backpropagation
+			outputLayerError := make([]float64, nn.outputSize)
+			for j := range outputLayer {
+				outputLayerError[j] = output[j] - outputLayer[j]
+			}
+
+			outputLayerDelta := make([]float64, nn.outputSize)
+			for j := range outputLayerDelta {
+				outputLayerDelta[j] = outputLayerError[j] * sigmoidDerivative(outputLayer[j])
+			}
+
+			hiddenError := make([]float64, nn.hiddenSize)
+			for j := range hidden {
+				for k := range outputLayerDelta {
+					hiddenError[j] += outputLayerDelta[k] * nn.weights2[j][k]
+				}
+			}
+
+			hiddenDelta := make([]float64, nn.hiddenSize)
+			for j := range hiddenDelta {
+				hiddenDelta[j] = hiddenError[j] * reluDerivative(hidden[j])
+			}
+
+			// Update weights and biases
+			for j := range nn.bias2 {
+				nn.bias2[j] += learningRate * outputLayerDelta[j]
+				for k := range hidden {
+					nn.weights2[k][j] += learningRate * outputLayerDelta[j] * hidden[k]
+				}
+			}
+
+			for j := range nn.bias1 {
+				nn.bias1[j] += learningRate * hiddenDelta[j]
+				for k := range input {
+					nn.weights1[k][j] += learningRate * hiddenDelta[j] * input[k]
+				}
+			}
 		}
+
+		// トレーニングセット全体に対する正答率を出力する
+		accuracy := float64(correct) / float64(len(inputs)) * 100.0
+		fmt.Printf("epoch: %d, accuracy: %f\n", epoch, accuracy)
 	}
-	return float64(n)/float64(c)
 }
