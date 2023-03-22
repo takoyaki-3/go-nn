@@ -69,17 +69,7 @@ func NewNeuralNetwork(inputSize, hiddenSize, outputSize int, activationFunction 
 		bias2:      make([]float64, outputSize),
 	}
 
-	if activationFunction == "relu-sigmoid" {
-		nn.activationFunction1 = relu
-		nn.activationFunction1Derivative = reluDerivative
-		nn.activationFunction2 = sigmoid
-		nn.activationFunction2Derivative = sigmoidDerivative
-	} else if activationFunction == "sigmoid-sigmoid" {
-		nn.activationFunction1 = sigmoid
-		nn.activationFunction1Derivative = sigmoidDerivative
-		nn.activationFunction2 = sigmoid
-		nn.activationFunction2Derivative = sigmoidDerivative
-	}
+	nn.SetActivationFunction(activationFunction)
 
 	rand.Seed(time.Now().UnixNano())
 
@@ -106,6 +96,20 @@ func NewNeuralNetwork(inputSize, hiddenSize, outputSize int, activationFunction 
 	}
 
 	return nn
+}
+
+func (nn *NeuralNetwork)SetActivationFunction(activationFunction string){
+	if activationFunction == "relu-sigmoid" {
+		nn.activationFunction1 = relu
+		nn.activationFunction1Derivative = reluDerivative
+		nn.activationFunction2 = sigmoid
+		nn.activationFunction2Derivative = sigmoidDerivative
+	} else if activationFunction == "sigmoid-sigmoid" {
+		nn.activationFunction1 = sigmoid
+		nn.activationFunction1Derivative = sigmoidDerivative
+		nn.activationFunction2 = sigmoid
+		nn.activationFunction2Derivative = sigmoidDerivative
+	}
 }
 
 func (nn *NeuralNetwork)PrintSize(){
