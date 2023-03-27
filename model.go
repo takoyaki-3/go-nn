@@ -22,6 +22,7 @@ type NeuralNetwork struct {
 	activationFunction1Derivative func(float64)float64
 	activationFunction2 func(float64)float64
 	activationFunction2Derivative func(float64)float64
+	Score			 float64
 }
 
 type Weights struct {
@@ -279,3 +280,81 @@ func (nn *NeuralNetwork) LoadWeights(filepath string) error {
 
 	return nil
 }
+
+func Crossover(parents []*NeuralNetwork, numChildren int, mutationRate float64) []*NeuralNetwork {
+	children := make([]*NeuralNetwork, numChildren)
+	rand.Seed(time.Now().UnixNano())
+	for i := 0; i < numChildren; i++ {
+		child := &NeuralNetwork{
+			inputSize:                   parents[0].inputSize,
+			hiddenSize:                  parents[0].hiddenSize,
+			outputSize:                  parents[0].outputSize,
+			weights1:                    make([][]float64, parents[0].inputSize),
+			weights2:                    make([][]float64, parents[0].hiddenSize),
+			bias1:                       make([]float64, parents[0].hiddenSize),
+			bias2:                       make([]float64, parents[0].outputSize),
+			activationFunction1:         parents[0].activationFunction1,
+			activationFunction1Derivative: parents[0].activationFunction1Derivative,
+			activationFunction2:         parents[0].activationFunction2,
+			activationFunction2Derivative: parents[0].activationFunction2Derivative,
+		}
+
+		for j := range child.weights1 {
+			child.weights1[j] = make([]float64, child.hiddenSize)
+			for k := range child.weights1[j] {
+				if rand.Float64() < 0.5 {
+					child.weights1[j][k] = parents[0].weights1[j][k]
+				} else {
+					child.weights1[j][k] = parents[1].weights1[j][k]
+				}
+
+				if rand.Float64() < mutationRate {
+					child.weights1[j][k] += rand.Float64() - 0.5
+				}
+			}
+		}
+
+		for j := range child.weights2 {
+			child.weights2[j] = make([]float64, child.outputSize)
+			for k := range child.weights2[j] {
+				if rand.Float64() < 0.5 {
+					child.weights2[j][k] = parents[0].weights2[j][k]
+				} else {
+					child.weights2[j][k] = parents[1].weights2[j][k]
+				}
+
+				if rand.Float64() < mutationRate {
+					child.weights2[j][k] += rand.Float64() - 0.5
+				}
+			}
+		}
+
+		for j := range child.bias1 {
+			if rand.Float64() < 0.5 {
+				child.bias1[j] = parents[0].bias1[j]
+			} else {
+				child.bias1[j] = parents[1].bias1[j]
+			}
+
+			if rand.Float64() < mutationRate {
+				child.bias1[j] += rand.Float64() - 0.5
+			}
+		}
+
+		for j := range child.bias2 {
+			if rand.Float64() < 0.5 {
+				child.bias2[j] = parents[0].bias2[j]
+			} else {
+				child.bias2[j] = parents[1].bias2[j]
+			}
+			if rand.Float64() < mutationRate {
+				child.bias2[j] += rand.Float64() - 0.5
+			}
+		}
+	
+		children[i] = child
+	}
+	
+	return children
+}
+
