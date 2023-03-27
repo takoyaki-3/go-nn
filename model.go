@@ -281,6 +281,7 @@ func (nn *NeuralNetwork) LoadWeights(filepath string) error {
 	return nil
 }
 
+// 遺伝的アルゴリズムにおける交配
 func Crossover(parents []*NeuralNetwork, numChildren int, mutationRate float64) []*NeuralNetwork {
 	children := make([]*NeuralNetwork, numChildren)
 	rand.Seed(time.Now().UnixNano())
