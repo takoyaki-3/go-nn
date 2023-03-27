@@ -358,4 +358,3 @@ func Crossover(parents []*NeuralNetwork, numChildren int, mutationRate float64) 
 	
 	return children
 }
-
