@@ -1,131 +1,112 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
-	"io"
-	"log"
-	"math/rand"
-	"net/http"
-	"os"
-
-	json "github.com/takoyaki-3/go-json"
 	gonn "github.com/takoyaki-3/go-nn/v2" //ニューラルネットワークライブラリ
+	"math/rand"
+	"sort"
+	"sync"
 )
 
-const N = 8 //盤面サイズ
+const PrintBoard = false
+const LoadNN = true
 
-type APIQuery struct {
-	Board  [][]int `json:"board"`
-	X      int     `json:"x"`
-	Y      int     `json:"y"`
-	Player int     `json:"player"`
-	Status string  `json:"status"`
-}
+const NumTrain = 100000
+const NumParent = 100
+const NumVS = 20
+const NumCore = 8
+const NextGen = 10
+const RandMode = false
+const VS_Human = false
 
-func Query2Board(q APIQuery) []int {
-	board := make([]int, 8*8)
-	for x := 0; x < N; x++ {
-		for y := 0; y < N; y++ {
-			board[x+y*N] = q.Board[x][y]
-		}
-	}
-	return board
-}
-func Board2Query(board []int) [][]int {
-	a := [][]int{}
-	for x := 0; x < N; x++ {
-		line := []int{}
-		for y := 0; y < N; y++ {
-			line = append(line, board[x+y*N])
-		}
-		a = append(a, line)
-	}
-	return a
-}
-
-func StreamToString(stream io.Reader) string {
-	buf := new(bytes.Buffer)
-	buf.ReadFrom(stream)
-	return buf.String()
-}
+const N = 8
 
 func main() {
 
-	nn := &gonn.NeuralNetwork{}
+	// 学習開始の世代数。既にe世代まで学習済みの場合、64206などの自然数を設定する
+	e := -1
 
-	// 学習済みの重みを読み込み
-	err := nn.LoadWeights("./trained_data.json")
-	if err != nil {
-		log.Fatalln(err)
+	// 乱数の初期値を設定。もし学習済みの特定世代のデータを使用する場合は特定世代データを読み込み
+	nns := []*gonn.NeuralNetwork{}
+	for i := 0; i < NumParent; i++ {
+		nn := gonn.NewNeuralNetwork(N*N+1, N*N, 200, "sigmoid-sigmoid")
+		nns = append(nns, nn)
 	}
-	nn.SetActivationFunction("sigmoid-sigmoid")
-	nn.PrintSize()
 
-	http.HandleFunc("/put", func(w http.ResponseWriter, r *http.Request) {
-
-		// CORS 許可
-		w.Header().Set("Access-Control-Allow-Headers", "*")
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-
-		// オセロのルール上、おけるか判定する
-		// 引数：座標、オセロの盤面　戻り値：おけるか判定、置いた後のオセロの盤面
-		var q APIQuery
-		st := StreamToString(r.Body)
-		json.LoadFromString(st, &q)
-
-		board := Query2Board(q)
-		availables := Available(&board, q.Player)
-
-		pos := q.X*N + q.Y
-		if availables[pos] {
-			Set(&board, pos, q.Player)
-			q.Board = Board2Query(board)
-			q.Status = "true"
-		} else {
-			q.Status = "false"
+	// 学習ループ
+	for {
+		e++
+		// 試合を繰り広げる
+		type Case struct {
+			IScore float64
+			JScore float64
+			I      int
+			J      int
+		}
+		cases := []Case{}
+		for i := 0; i < len(nns); i++ {
+			for jj := 0; jj < NumVS; jj++ {
+				j := rand.Intn(len(nns))
+				// i vs j を試合パターンに追加
+				cases = append(cases, Case{
+					I: i,
+					J: j,
+				})
+			}
 		}
 
-		str, _ := json.DumpToString(q)
-		fmt.Fprintf(w, str)
-	})
-	http.HandleFunc("/cpu", func(w http.ResponseWriter, r *http.Request) {
+		// 実際に試合を行う処理
+		Parallel(NumCore, len(cases), func(index, rank int) {
+			i := cases[index].I
+			j := cases[index].J
+			if i != j {
+				// i vs j
+				a := Game(nns[i], nns[j], PrintBoard, RandMode, VS_Human)
+				cpu1score := 0
+				cpu2score := 0
+				if v, ok := a[1]; ok {
+					cpu1score = v
+				}
+				if v, ok := a[-1]; ok {
+					cpu2score = v
+				}
+				if cpu1score >= cpu2score {
+					cases[index].IScore += float64(cpu1score)
+					cases[index].JScore -= float64(cpu1score)
+				}
+				if cpu1score <= cpu2score {
+					cases[index].IScore -= float64(cpu2score)
+					cases[index].JScore += float64(cpu2score)
+				}
+			}
+		})
 
-		// CORS 許可
-		w.Header().Set("Access-Control-Allow-Headers", "*")
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-
-		// ある地点に置いた場合のAIによる次の手
-		// 引数：盤面　戻り値：置いた後のオセロの盤面
-		var q APIQuery
-		st := StreamToString(r.Body)
-		json.LoadFromString(st, &q)
-
-		board := Query2Board(q)
-		pos := CPU(&board, q.Player, nn, false, false)
-		if pos >= 0 {
-			// 置けるところがあった場合
-			Set(&board, pos, q.Player)
-		}
-		q.Board = Board2Query(board)
-
-		str, _ := json.DumpToString(q)
-		fmt.Fprintf(w, str)
-	})
-
-	// 以下、ファイルを返すWebサーバーとしての挙動
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path[len(r.URL.Path)-1] == '/' {
-			r.URL.Path += "index.html"
+		// 試合結果を基に各ニューラルネットワークの成績を加点又は減点する
+		for _, c := range cases {
+			nns[c.I].Score += c.IScore
+			nns[c.J].Score += c.JScore
 		}
 
-		fmt.Println("./public" + r.URL.Path)
-		f, _ := os.Open("./public" + r.URL.Path)
-		io.Copy(w, f)
-	})
-	http.ListenAndServe(":8080", nil)
+		// ニューラルネットワークを成績順に並び替える
+		sort.Slice(nns, func(i, j int) bool {
+			return nns[i].Score > nns[j].Score
+		})
+
+		// ニューラルネットワークの重みをファイルに保存
+		nns[0].SaveWeights("trained_data.json")
+
+		// 結果を標準出力
+		fmt.Print("e:", e, ":")
+		for _, n := range nns {
+			fmt.Print(n.Score, " ")
+		}
+		fmt.Println("")
+
+		// 突然変異を起こしつつ、子世代を生成する
+		er := 0.002
+		cs := gonn.Crossover(nns[:NextGen], NumParent, er)
+		nns = cs
+	}
 }
 
 //ゲームをプレイする関数。cpu1とcpu2はニューラルネットワーク、PrintBoardは盤面を表示するかどうかのフラグ、RandModeはランダムに手を選ぶかどうかのフラグ、VS_Humanは人間と対戦するかどうかのフラグ。
@@ -154,6 +135,7 @@ func Game(cpu1, cpu2 *gonn.NeuralNetwork, PrintBoard bool, RandMode bool, VS_Hum
 			finish = false         //終了フラグを初期化する。
 		} else {
 			if finish {
+				// fmt.Println("finish")
 				break //終了する。
 			}
 			finish = true //終了フラグを立てる。
@@ -173,6 +155,7 @@ func Game(cpu1, cpu2 *gonn.NeuralNetwork, PrintBoard bool, RandMode bool, VS_Hum
 		}
 		a[p]++ //盤面にある石の数をカウントする。
 	}
+	// fmt.Println(a)
 	return a //各石の数を返す。
 }
 
@@ -322,4 +305,19 @@ func CPU(board *[]int, player int, nn *gonn.NeuralNetwork, RandMode bool, VS_Hum
 		}
 	}
 	return oklist[most]
+}
+
+// コア数,総ループ数,呼び出し関数(インデックス,スレッド番号)
+func Parallel(core int, n int, f func(int, int)) {
+	wg := sync.WaitGroup{}
+	wg.Add(core)
+	for rank := 0; rank < core; rank++ {
+		go func(rank int) {
+			defer wg.Done()
+			for i := rank; i < n; i += core {
+				f(i, rank)
+			}
+		}(rank)
+	}
+	wg.Wait()
 }
