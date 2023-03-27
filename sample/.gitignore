@@ -1,1 +1,2 @@
 *.json
+!.trained_data.json
