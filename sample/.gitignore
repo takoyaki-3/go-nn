@@ -1,2 +1,2 @@
 *.json
-!.trained_data.json
+!trained_data.json
