@@ -8,6 +8,8 @@ import (
 	"math/rand"
 	"os"
 	"time"
+	"encoding/gob"
+	"bytes"
 )
 
 type NeuralNetwork struct {
@@ -357,4 +359,64 @@ func Crossover(parents []*NeuralNetwork, numChildren int, mutationRate float64) 
 	}
 	
 	return children
+}
+
+func (nn *NeuralNetwork) SaveWeightsBinary(filepath string) error {
+	weights := Weights{
+		InputSize:  nn.inputSize,
+		HiddenSize: nn.hiddenSize,
+		OutputSize: nn.outputSize,
+		Weights1:   nn.weights1,
+		Weights2:   nn.weights2,
+		Bias1:      nn.bias1,
+		Bias2:      nn.bias2,
+	}
+
+	file, err := os.Create(filepath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	// Save Weights in binary format
+	encoder := gob.NewEncoder(file)
+	err = encoder.Encode(weights)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (nn *NeuralNetwork) LoadWeightsBinary(filepath string) error {
+	weights := Weights{}
+
+	data, err := ioutil.ReadFile(filepath)
+	if err != nil {
+		return err
+	}
+
+	// Load Weights in binary format
+	decoder := gob.NewDecoder(bytes.NewReader(data))
+	err = decoder.Decode(&weights)
+	if err != nil {
+		return err
+	}
+
+	nn.inputSize = weights.InputSize
+	nn.hiddenSize = weights.HiddenSize
+	nn.outputSize = weights.OutputSize
+	nn.weights1 = weights.Weights1
+	nn.weights2 = weights.Weights2
+	nn.bias1 = weights.Bias1
+	nn.bias2 = weights.Bias2
+
+	if len(nn.bias1) == 0 {
+		nn.bias1 = make([]float64, nn.hiddenSize)
+	}
+	if len(nn.bias2) == 0 {
+		nn.bias2 = make([]float64, nn.outputSize)
+	}
+
+	return nil
 }
