@@ -420,3 +420,21 @@ func (nn *NeuralNetwork) LoadWeightsBinary(filepath string) error {
 
 	return nil
 }
+
+// GetWeight1 returns the weight from input layer i to hidden layer j
+func (nn *NeuralNetwork) GetWeight1(i, j int) float64 {
+	if i >= 0 && i < nn.inputSize && j >= 0 && j < nn.hiddenSize {
+		return nn.weights1[i][j]
+	}
+	fmt.Println("Invalid index")
+	return 0
+}
+
+// GetWeight2 returns the weight from hidden layer i to output layer j
+func (nn *NeuralNetwork) GetWeight2(i, j int) float64 {
+	if i >= 0 && i < nn.hiddenSize && j >= 0 && j < nn.outputSize {
+		return nn.weights2[i][j]
+	}
+	fmt.Println("Invalid index")
+	return 0
+}
